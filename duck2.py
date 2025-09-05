@@ -32,40 +32,46 @@ if vqd: headers["x-vqd-hash-1"] = vqd
 
 # --- chat function ---
 def chat(prompt: str):
-    body = {
-        "model": "gpt-4o-mini",
-        "metadata": {"toolChoice": {
-            "NewsSearch": False, "VideosSearch": False,
-            "LocalSearch": False, "WeatherForecast": False
-        }},
-        "messages": [{"role": "user", "content": prompt}],
-        "canUseTools": True,
-        "canUseApproxLocation": False,
-    }
-    resp = requests.post(
-        "https://duckduckgo.com/duckchat/v1/chat",
-        headers=headers,
-        cookies=cookies,
-        data=json.dumps(body),
-        stream=True,
-    )
-    full = []
-    for line in resp.iter_lines():
-        if not line or not line.startswith(b"data: "):
-            continue
-        payload = line[len(b"data: "):].decode()
-        if payload == "[DONE]":
-            break
-        try:
-            obj = json.loads(payload)
-            msg = obj.get("message", "")
-            if msg:
-                full.append(msg)
-                print(msg, end="", flush=True)  # live streaming
-        except Exception:
-            continue
-    print("\n")
-    return "".join(full)
+    try:
+        body = {
+            "model": "gpt-4o-mini",
+            "metadata": {"toolChoice": {
+                "NewsSearch": True, "VideosSearch": False,
+                "LocalSearch": False, "WeatherForecast": False
+            }},
+            "messages": [{"role": "user", "content": prompt}],
+            "canUseTools": True,
+            "canUseApproxLocation": False,
+        }
+        resp = requests.post(
+            "https://duckduckgo.com/duckchat/v1/chat",
+            headers=headers,
+            cookies=cookies,
+            data=json.dumps(body),
+            stream=True,
+        )
+        full = []
+
+        resp.raise_for_status()
+        for line in resp.iter_lines():
+            if not line or not line.startswith(b"data: "):
+                continue
+            payload = line[len(b"data: "):].decode()
+            if payload == "[DONE]":
+                break
+            try:
+                obj = json.loads(payload)
+                msg = obj.get("message", "")
+                if msg:
+                    full.append(msg)
+                    print(msg, end="", flush=True)  # live streaming
+            except Exception:
+                continue
+        print("\n")
+        return "".join(full)
+    except requests.exceptions.HTTPError:
+        print("Please kindly Refresh session good sir.")
+
 
 
 # --- interactive loop ---
